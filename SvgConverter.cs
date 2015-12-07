@@ -22,7 +22,7 @@ namespace Svg2Path
         /// <param name="specifiedSize">Specify the size, if not, please use Size.Empty</param>
         /// <param name="readSize">read the size defined in the SVG file or not</param>
         /// <returns></returns>
-        public static async Task<Viewbox> ConvertFromFileToViewboxAsync(StorageFile file, Size specifiedSize, bool readSize = true, bool readColor = false)
+        public static async Task<Viewbox> ConvertFromFileToViewboxAsync(StorageFile file, Size specifiedSize, bool readSize = true, bool readColor = true,bool isDefaultBalck=false)
         {
             try
             {
@@ -31,7 +31,7 @@ namespace Svg2Path
 
                 using (var stream = await OpenFileAsync(file))
                 {
-                    var datas = ReadStreamAndConvertToPath(stream);
+                    var datas = ReadStreamAndConvertToPath(stream, isDefaultBalck);
 
                     if (readSize)
                     {
@@ -49,7 +49,14 @@ namespace Svg2Path
                     var paths = datas.Item2;
                     foreach (var path in paths)
                     {
-                        if (readColor) path.Fill = datas.Item3;
+                        if (!readColor)
+                        {
+                            if (isDefaultBalck)
+                            {
+                                path.Fill = new SolidColorBrush(Colors.Black);
+                            }
+                            else path.Fill = new SolidColorBrush(Colors.White);
+                        }
                         rootGrid.Width = viewBox.Width;
                         rootGrid.Height = viewBox.Height;
                         rootGrid.Children.Add(path);
@@ -58,7 +65,7 @@ namespace Svg2Path
                     return viewBox;
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 return null;
             }
@@ -80,10 +87,10 @@ namespace Svg2Path
         /// </summary>
         /// <param name="stream">文件流</param>
         /// <returns></returns>
-        private static Tuple<Size, List<Windows.UI.Xaml.Shapes.Path>, SolidColorBrush> ReadStreamAndConvertToPath(Stream stream)
+        private static Tuple<Size, List<Windows.UI.Xaml.Shapes.Path>, SolidColorBrush> ReadStreamAndConvertToPath(Stream stream,bool isDefaultBlack)
         {
             List<Windows.UI.Xaml.Shapes.Path> pathsToReturn = new List<Windows.UI.Xaml.Shapes.Path>();
-            SolidColorBrush color = new SolidColorBrush(Colors.White);
+            SolidColorBrush defaultColor =isDefaultBlack?new SolidColorBrush(Colors.Black):new SolidColorBrush(Colors.White);
             try
             {
                 //Load XAML document
@@ -97,59 +104,56 @@ namespace Svg2Path
                 var size = new Size(double.Parse(width), double.Parse(height));
 
                 //Get all paths
-                var paths = root.Descendants().Where(e => e.Name.LocalName == "path");
+                var elements = root.Descendants().Where(e => (e.Name.LocalName == "path" || e.Name.LocalName=="polygon"));
 
-                //Get all polygons
-                var polygons = root.Descendants().Where(e => e.Name.LocalName == "polygon");
-
-                foreach (var path in paths)
+                foreach (var element in elements)
                 {
-                    Windows.UI.Xaml.Shapes.Path newPath = new Windows.UI.Xaml.Shapes.Path()
+                    var localName = element.Name.LocalName;
+                    if(localName=="path")
                     {
-                        Fill = new SolidColorBrush(Colors.White),
-                        Stretch = Stretch.None,
-                    };
+                        var d = element.Attributes().Where(e => e.Name.LocalName == "d");
+                        var fill = element.Attributes().Where(e => e.Name.LocalName == "fill");
+                        var dataSrc = d.FirstOrDefault().Value;
+                        if (fill != null && fill.Count() > 0)
+                        {
+                            var fillData = fill.FirstOrDefault().Value;
+                            if (fillData != null) defaultColor = new SolidColorBrush(ColorConverter.Hex2Color(fillData));
+                        }
 
-                    var d = path.Attributes().Where(e => e.Name.LocalName == "d");
-                    var fill = path.Attributes().Where(e => e.Name.LocalName == "fill");
-                    var dataSrc = d.FirstOrDefault().Value;
-                    if (fill != null && fill.Count() > 0)
-                    {
-                        var fillData = fill.FirstOrDefault().Value;
-                        if (fillData != null) color = new SolidColorBrush(ColorConverter.Hex2Color(fillData));
+                        Windows.UI.Xaml.Shapes.Path newPath = new Windows.UI.Xaml.Shapes.Path()
+                        {
+                            Fill = defaultColor
+                        };
+
+                        var binding = new Binding
+                        {
+                            Source = dataSrc,
+                        };
+                        BindingOperations.SetBinding(newPath, Windows.UI.Xaml.Shapes.Path.DataProperty, binding);
+
+                        pathsToReturn.Add(newPath);
                     }
-
-                    var binding = new Binding
+                    else if(localName=="polygon")
                     {
-                        Source = dataSrc,
-                    };
-                    BindingOperations.SetBinding(newPath, Windows.UI.Xaml.Shapes.Path.DataProperty, binding);
+                        Windows.UI.Xaml.Shapes.Path newPath = new Windows.UI.Xaml.Shapes.Path() { Fill = new SolidColorBrush(Colors.White) };
 
-                    pathsToReturn.Add(newPath);
+                        var point = element.Attributes().Where(a => a.Name.LocalName == "points");
+                        var dataStr = point.FirstOrDefault().Value;
+
+                        var binding = new Binding()
+                        {
+                            Source = dataStr.StartsWith("M") ? dataStr : "M" + dataStr,
+                        };
+                        BindingOperations.SetBinding(newPath, Windows.UI.Xaml.Shapes.Path.DataProperty, binding);
+
+                        pathsToReturn.Add(newPath);
+                    }
                 }
-
-                foreach (var polygon in polygons)
-                {
-                    Windows.UI.Xaml.Shapes.Path newPath = new Windows.UI.Xaml.Shapes.Path() { Fill = new SolidColorBrush(Colors.White), Stretch = Stretch.Uniform };
-
-                    var point = polygon.Attributes().Where(a => a.Name.LocalName == "points");
-                    var dataStr = point.FirstOrDefault().Value;
-
-                    var binding = new Binding()
-                    {
-                        Source = dataStr.StartsWith("M") ? dataStr : "M" + dataStr,
-                    };
-                    BindingOperations.SetBinding(newPath, Windows.UI.Xaml.Shapes.Path.DataProperty, binding);
-
-                    pathsToReturn.Add(newPath);
-                }
-
-                return Tuple.Create(size, pathsToReturn, color);
-
+                return Tuple.Create(size, pathsToReturn, defaultColor);
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                return Tuple.Create(new Size(), pathsToReturn, color);
+                return Tuple.Create(new Size(), pathsToReturn, defaultColor);
             }
         }
     }
