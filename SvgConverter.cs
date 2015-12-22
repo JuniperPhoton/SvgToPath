@@ -10,6 +10,7 @@ using Windows.UI;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Media;
+using Windows.UI.Xaml.Shapes;
 
 namespace Svg2Path
 {
@@ -22,7 +23,7 @@ namespace Svg2Path
         /// <param name="specifiedSize">Specify the size, if not, please use Size.Empty</param>
         /// <param name="readSize">read the size defined in the SVG file or not</param>
         /// <returns></returns>
-        public static async Task<Viewbox> ConvertFromFileToViewboxAsync(StorageFile file, Size specifiedSize, bool readSize = true, bool readColor = true,bool isDefaultBalck=false)
+        public static async Task<Viewbox> ConvertFromFileToViewboxAsync(StorageFile file, Size specifiedSize, bool readSize , bool readColor ,bool isDefaultBalck)
         {
             try
             {
@@ -99,8 +100,10 @@ namespace Svg2Path
                 //Get some info.
                 var widthInfo = root.Attributes().Where(a => a.Name.LocalName == "width").FirstOrDefault();
                 var heightInfo = root.Attributes().Where(a => a.Name.LocalName == "height").FirstOrDefault();
-                var width = widthInfo.Value.Replace("px", string.Empty);
-                var height = heightInfo.Value.Replace("px", string.Empty);
+
+                var width = widthInfo?.Value.Replace("px", string.Empty);
+                var height = heightInfo?.Value.Replace("px", string.Empty);
+
                 var size = new Size(double.Parse(width), double.Parse(height));
 
                 //Get all paths
@@ -111,23 +114,23 @@ namespace Svg2Path
                     var localName = element.Name.LocalName;
                     if(localName=="path")
                     {
-                        var d = element.Attributes().Where(e => e.Name.LocalName == "d");
-                        var fill = element.Attributes().Where(e => e.Name.LocalName == "fill");
-                        var dataSrc = d.FirstOrDefault().Value;
-                        if (fill != null && fill.Count() > 0)
+                        var d = (element.Attributes().Where(e => e.Name.LocalName == "d")).FirstOrDefault();
+                        var fill = (element.Attributes().Where(e => e.Name.LocalName == "fill")).FirstOrDefault();
+                        var newColor= isDefaultBlack ? new SolidColorBrush(Colors.Black) : new SolidColorBrush(Colors.White);
+
+                        if (fill != null)
                         {
-                            var fillData = fill.FirstOrDefault().Value;
-                            if (fillData != null) defaultColor = new SolidColorBrush(ColorConverter.Hex2Color(fillData));
+                            newColor = new SolidColorBrush(ColorConverter.Hex2Color(fill.Value));
                         }
 
                         Windows.UI.Xaml.Shapes.Path newPath = new Windows.UI.Xaml.Shapes.Path()
                         {
-                            Fill = defaultColor
+                            Fill = newColor
                         };
 
                         var binding = new Binding
                         {
-                            Source = dataSrc,
+                            Source = d.Value,
                         };
                         BindingOperations.SetBinding(newPath, Windows.UI.Xaml.Shapes.Path.DataProperty, binding);
 
@@ -135,10 +138,14 @@ namespace Svg2Path
                     }
                     else if(localName=="polygon")
                     {
-                        Windows.UI.Xaml.Shapes.Path newPath = new Windows.UI.Xaml.Shapes.Path() { Fill = new SolidColorBrush(Colors.White) };
+                        var newColor = isDefaultBlack ? new SolidColorBrush(Colors.Black) : new SolidColorBrush(Colors.White);
 
                         var point = element.Attributes().Where(a => a.Name.LocalName == "points");
                         var dataStr = point.FirstOrDefault().Value;
+                        var fill = (element.Attributes().Where(a => a.Name.LocalName == "fill")).FirstOrDefault();
+
+                        Windows.UI.Xaml.Shapes.Path newPath = new Windows.UI.Xaml.Shapes.Path() { Fill = newColor };
+                        if (fill != null) newPath.Fill = new SolidColorBrush(ColorConverter.Hex2Color(fill.Value));
 
                         var binding = new Binding()
                         {
