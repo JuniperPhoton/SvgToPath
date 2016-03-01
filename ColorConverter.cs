@@ -21,6 +21,7 @@ namespace Svg2Path
             {
                 hexColor = hexColor.Trim();
                 if (hexColor[0] == '#') hexColor = hexColor.Substring(1, hexColor.Length - 1);
+                if (hexColor.Length == 8) hexColor = hexColor.Substring(2, hexColor.Length - 2);
 
                 r = hexColor.Substring(0, 2);
                 g = hexColor.Substring(2, 2);

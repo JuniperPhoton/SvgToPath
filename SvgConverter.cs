@@ -107,8 +107,8 @@ namespace Svg2Path
                 var height = heightInfo?.Value.Replace("px", string.Empty);
 
                 var size = new Size(double.Parse(width), double.Parse(height));
+                if (size.Width == 0 || size.Height == 0) size = Size.Empty;
                 
-
                 //Get all paths
                 var elements = root.Descendants().Where(e => (e.Name.LocalName == "path" || e.Name.LocalName=="polygon"));
 
@@ -128,9 +128,17 @@ namespace Svg2Path
                             opacity = double.Parse(opacityInfo.Value);
                         }
 
+                        //In some case fill 's value is "none"
                         if (fill != null)
                         {
-                            newColor = new SolidColorBrush(ColorConverter.Hex2Color(fill.Value));
+                            try
+                            {
+                                newColor = new SolidColorBrush(ColorConverter.Hex2Color(fill.Value));
+                            }
+                            catch (Exception)
+                            {
+
+                            }
                         }
 
                         Windows.UI.Xaml.Shapes.Path newPath = new Windows.UI.Xaml.Shapes.Path()
