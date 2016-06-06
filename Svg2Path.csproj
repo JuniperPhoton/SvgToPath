@@ -118,12 +118,6 @@
     <Compile Include="SvgConverter.cs" />
     <Content Include="Properties\Svg2Path.rd.xml" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\JP.Utils.UWP\JP.Utils.UWP\JP.Utils.UWP.csproj">
-      <Project>{357c51db-765e-4a88-950f-cda24f7184c3}</Project>
-      <Name>JP.Utils.UWP</Name>
-    </ProjectReference>
-  </ItemGroup>
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">
     <VisualStudioVersion>14.0</VisualStudioVersion>
   </PropertyGroup>

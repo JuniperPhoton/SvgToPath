@@ -1,5 +1,4 @@
-﻿using JP.Utils.Debug;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -24,7 +23,7 @@ namespace Svg2Path
         /// <param name="specifiedSize">Specify the size, if not, please use Size.Empty</param>
         /// <param name="readSize">read the size defined in the SVG file or not</param>
         /// <returns></returns>
-        public static async Task<Viewbox> ConvertFromFileToViewboxAsync(StorageFile file, Size specifiedSize, bool readSize , bool readColor ,bool isDefaultBalck)
+        public static async Task<Viewbox> ConvertFromFileToViewboxAsync(StorageFile file, Size specifiedSize, bool readSize, bool readColor, bool isDefaultBalck)
         {
             try
             {
@@ -69,7 +68,6 @@ namespace Svg2Path
             }
             catch (Exception e)
             {
-                var task = ExceptionHelper.WriteRecordAsync(e, nameof(SvgConverter), nameof(ConvertFromFileToViewboxAsync));
                 return null;
             }
         }
@@ -90,10 +88,10 @@ namespace Svg2Path
         /// </summary>
         /// <param name="stream">文件流</param>
         /// <returns></returns>
-        private static Tuple<Size, List<Windows.UI.Xaml.Shapes.Path>, SolidColorBrush> ReadStreamAndConvertToPath(Stream stream,bool isDefaultBlack)
+        private static Tuple<Size, List<Windows.UI.Xaml.Shapes.Path>, SolidColorBrush> ReadStreamAndConvertToPath(Stream stream, bool isDefaultBlack)
         {
             List<Windows.UI.Xaml.Shapes.Path> pathsToReturn = new List<Windows.UI.Xaml.Shapes.Path>();
-            SolidColorBrush defaultColor =isDefaultBlack?new SolidColorBrush(Colors.Black):new SolidColorBrush(Colors.White);
+            SolidColorBrush defaultColor = isDefaultBlack ? new SolidColorBrush(Colors.Black) : new SolidColorBrush(Colors.White);
             try
             {
                 //Load XAML document
@@ -108,18 +106,18 @@ namespace Svg2Path
 
                 var size = new Size(double.Parse(width), double.Parse(height));
                 if (size.Width == 0 || size.Height == 0) size = Size.Empty;
-                
+
                 //Get all paths
-                var elements = root.Descendants().Where(e => (e.Name.LocalName == "path" || e.Name.LocalName=="polygon"));
+                var elements = root.Descendants().Where(e => (e.Name.LocalName == "path" || e.Name.LocalName == "polygon"));
 
                 foreach (var element in elements)
                 {
                     var localName = element.Name.LocalName;
-                    if(localName=="path")
+                    if (localName == "path")
                     {
                         var d = (element.Attributes().Where(e => e.Name.LocalName == "d")).FirstOrDefault();
                         var fill = (element.Attributes().Where(e => e.Name.LocalName == "fill")).FirstOrDefault();
-                        var newColor= isDefaultBlack ? new SolidColorBrush(Colors.Black) : new SolidColorBrush(Colors.White);
+                        var newColor = isDefaultBlack ? new SolidColorBrush(Colors.Black) : new SolidColorBrush(Colors.White);
                         var opacityInfo = (element.Attributes().Where(e => e.Name.LocalName == "opacity")).FirstOrDefault();
 
                         var opacity = 1.0d;
@@ -155,7 +153,7 @@ namespace Svg2Path
 
                         pathsToReturn.Add(newPath);
                     }
-                    else if(localName=="polygon")
+                    else if (localName == "polygon")
                     {
                         var newColor = isDefaultBlack ? new SolidColorBrush(Colors.Black) : new SolidColorBrush(Colors.White);
 
@@ -170,7 +168,7 @@ namespace Svg2Path
                             opacity = double.Parse(opacityInfo.Value);
                         }
 
-                        Windows.UI.Xaml.Shapes.Path newPath = new Windows.UI.Xaml.Shapes.Path() { Fill = newColor,Opacity=opacity };
+                        Windows.UI.Xaml.Shapes.Path newPath = new Windows.UI.Xaml.Shapes.Path() { Fill = newColor, Opacity = opacity };
                         if (fill != null) newPath.Fill = new SolidColorBrush(ColorConverter.Hex2Color(fill.Value));
 
                         var binding = new Binding()
@@ -186,7 +184,6 @@ namespace Svg2Path
             }
             catch (Exception e)
             {
-                var task = ExceptionHelper.WriteRecordAsync(e, nameof(SvgConverter), nameof(ReadStreamAndConvertToPath));
                 return Tuple.Create(new Size(), pathsToReturn, defaultColor);
             }
         }
